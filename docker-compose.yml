@@ -1,0 +1,33 @@
+version: '3.8'
+services:
+  wastebin:
+    image: quxfoo/wastebin:${WB_VERSION:-2.0.0}
+    container_name: ${APP_PROJECT}-wastebin
+    env_file:
+      - .env
+    volumes:
+      - ./datas:/var/wastebin/
+    restart: unless-stopped
+    labels:
+      - traefik.enable=true
+        # Router http
+      - traefik.http.routers.wastebin_http_router.entrypoints=http
+      - traefik.http.routers.wastebin_http_router.rule=Host(`${APP_DOMAIN:-bin.tchartron.com}`)
+      - traefik.http.routers.wastebin_http_router.middlewares=https-redirect@file
+        # Routers https
+      - traefik.http.routers.wastebin_https_router.entrypoints=https
+      - traefik.http.routers.wastebin_https_router.rule=Host(`${APP_DOMAIN:-bin.tchartron.com}`)
+      - traefik.http.routers.wastebin_https_router.middlewares=https-whitelist@file
+      - traefik.http.routers.wastebin_https_router.tls=true
+      - traefik.http.routers.wastebin_https_router.tls.certresolver=letsencrypt
+      - traefik.http.routers.wastebin_https_router.tls.domains[0].main=${APP_DOMAIN:-bin.tchartron.com}
+      - traefik.http.routers.wastebin_https_router.service=wastebin_https_service
+      - traefik.http.services.wastebin_https_service.loadbalancer.server.port=8088
+    networks:
+      - default
+
+networks:
+  default:
+    name: ${NETWORK_PREFIX:-app}_network
+    driver: bridge
+    external: true
